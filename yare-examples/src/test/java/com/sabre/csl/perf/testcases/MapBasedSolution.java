@@ -33,16 +33,18 @@ import com.sabre.oss.yare.core.RuleSession;
 import com.sabre.oss.yare.core.RulesEngine;
 import com.sabre.oss.yare.core.RulesEngineBuilder;
 import com.sabre.oss.yare.core.model.Rule;
-import com.sabre.oss.yare.dsl.RuleDsl;
+import com.sabre.oss.yare.serializer.json.RuleToJsonConverter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.sabre.oss.yare.dsl.RuleDsl.*;
 import static com.sabre.oss.yare.invoker.java.MethodCallMetadata.method;
 
 public class MapBasedSolution implements AbstractRuleTest {
@@ -52,17 +54,21 @@ public class MapBasedSolution implements AbstractRuleTest {
 
     boolean shouldWriteJsonToFile = true;
 
+    RuleToJsonConverter converter = new RuleToJsonConverter();
+
     @BeforeEach
     public void setUp() {
+        Instant start = Instant.now();
         List<Rule> rule = getRules(numberOfRules);
-
+        Instant end = Instant.now();
+        System.out.println("Time Taken for unmarshal -> " + Duration.between(start, end).toMillis() + " ms");
         if (shouldWriteJsonToFile)
             writeRuleJsonToFile(rule);
 
         RulesEngine engine = new RulesEngineBuilder()
                 .withRulesRepository(i -> rule)
                 .withActionMapping("collectList", method(new Actions(), (action) -> action.collectList(null, null)))
-                .withFunctionMapping("validateMap", method(new Actions(), (actions -> actions.validateMap(null, null,null))))
+                .withFunctionMapping("validateMap", method(new Actions(), (actions -> actions.validateMap(null, null, null))))
                 .build();
 
         session = engine.createSession("hotels");
@@ -97,6 +103,7 @@ public class MapBasedSolution implements AbstractRuleTest {
 
     private Map<Integer, List<StayDates>> getHotelMapFact(int sortOrder) {
         Map<Integer, List<StayDates>> rule = new HotelMapFact();
+        if (sortOrder == 10) sortOrder = 0;
         for (int i = 100000; i < 100000 + totalProperty; i++) {
             if (validate.apply(i, sortOrder)) {
                 StayDates dates = new StayDates();
@@ -117,7 +124,16 @@ public class MapBasedSolution implements AbstractRuleTest {
     // 2 -> Rule 1
     @Override
     public Rule getRule(int i) {
-        return RuleDsl.ruleBuilder()
+
+        String filePath = String.format(ruleFileLocation, i);
+        try {
+            String s = new String(Files.readAllBytes(Paths.get(filePath)));
+            return converter.unmarshal(s);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+        /*return RuleDsl.ruleBuilder()
                 .name("Rule for sort order " + i)
                 .attribute("active", true)
                 .fact("wrapper", Wrapper.class)
@@ -125,13 +141,13 @@ public class MapBasedSolution implements AbstractRuleTest {
                         isTrue(function("validateMap", Boolean.class,
                                 param("hotelFactsMap", value(getHotelMapFact(i))), // JSON
                                 param("searchFact", value("${wrapper.hotelFacts}")), //DYNAMIC
-                                param("sortOrder",value(i)))  //JSON
+                                param("sortOrder", value(i)))  //JSON
                         )
                 )
                 .action("collectList",
                         param("context", value("${ctx}")),
                         param("fact", value("${wrapper.hotelFacts}")))
-                .build();
+                .build();*/
     }
 }
 

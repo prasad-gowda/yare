@@ -1,10 +1,19 @@
 package com.sabre.csl.perf.model;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.sabre.csl.perf.util.ZonedDateTimeDeserializer;
+import com.sabre.csl.perf.util.ZonedDateTimeSerializer;
+
 import java.time.ZonedDateTime;
 
 public class StayDates {
+    @JsonSerialize(using = ZonedDateTimeSerializer.class)
+    @JsonDeserialize(using = ZonedDateTimeDeserializer.class)
     ZonedDateTime stayStartDate;
 
+    @JsonSerialize(using = ZonedDateTimeSerializer.class)
+    @JsonDeserialize(using = ZonedDateTimeDeserializer.class)
     ZonedDateTime stayEndDate;
 
     public ZonedDateTime getStayStartDate() {

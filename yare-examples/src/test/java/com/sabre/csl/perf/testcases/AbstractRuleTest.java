@@ -31,25 +31,25 @@ import com.sabre.oss.yare.core.model.Rule;
 import com.sabre.oss.yare.serializer.json.RuleToJsonConverter;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 
+import static java.lang.String.format;
 import static java.nio.file.Files.write;
 
 public interface AbstractRuleTest {
-    String ruleFileLocation = "C:\\Users\\SG0308137\\Downloads\\rule.json";
+    String ruleFileLocation = "src/test/resources/rules/rule_%d.json";
 
-    int totalProperty = 10;
+    int totalProperty = 150000;
 
-    int numberOfRules = 1;
+    int numberOfRules = 10;
 
     BiFunction<Integer, Integer, Boolean> validate =
             (Integer propertyId, Integer sortOrder) -> String.valueOf(propertyId).endsWith(String.valueOf(sortOrder));
@@ -57,7 +57,7 @@ public interface AbstractRuleTest {
     default List<Rule> getRules(int numberOfRules) {
         List<Rule> rules = new ArrayList<>();
         if (numberOfRules > 10) numberOfRules = 10;
-        for (int i = 0; i <= numberOfRules; i++) {
+        for (int i = 1; i <= numberOfRules; i++) {
             rules.add(getRule(i));
         }
         return rules;
@@ -67,6 +67,7 @@ public interface AbstractRuleTest {
 
     default List<PreferencePredicates> getPreferencePredicates(int sortOrder) {
         List<PreferencePredicates> preferencePredicatesList = new ArrayList<>();
+        if (sortOrder == 10) sortOrder = 0;
         for (int propertyId = 100000; propertyId <= 100000 + totalProperty; propertyId++) {
             if (validate.apply(propertyId, sortOrder)) {
                 PreferencePredicates preferencePredicates = new PreferencePredicates();
@@ -100,11 +101,11 @@ public interface AbstractRuleTest {
 
     default void writeRuleJsonToFile(List<Rule> rules) {
         RuleToJsonConverter ruleToJsonConverter = new RuleToJsonConverter();
-
-        //Build Rule JSON array in string format
+        AtomicInteger count = new AtomicInteger(1);
+        //Build Rule     JSON array in string format
         rules.forEach(rule -> {
             try {
-                write(Paths.get(ruleFileLocation), ruleToJsonConverter.marshal(rule).concat(",").getBytes(), StandardOpenOption.APPEND);
+                write(Paths.get(format(ruleFileLocation, count.getAndIncrement())), ruleToJsonConverter.marshal(rule).getBytes());
             } catch (IOException e) {
                 e.printStackTrace();
             }
