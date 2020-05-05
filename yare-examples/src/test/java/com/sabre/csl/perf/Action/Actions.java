@@ -25,14 +25,21 @@
 package com.sabre.csl.perf.Action;
 
 import com.sabre.csl.perf.model.HotelFact;
+import com.sabre.csl.perf.model.HotelMapFact;
 import com.sabre.csl.perf.model.PreferencePredicates;
 
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Actions {
     public void collect(List<HotelFact> context, HotelFact fact) {
+        ///fact.setSelected(true);
         context.add(fact);
+    }
+
+    public void collectList(Set<HotelFact> context, List<HotelFact> fact) {
+        fact.stream().filter(hotelFact -> hotelFact.getSortOrder() != null).forEach(context::add);
     }
 
     public boolean validate(List<PreferencePredicates> hotelFacts, List<PreferencePredicates> searchFacts) {
@@ -43,12 +50,18 @@ public class Actions {
         return false;
     }
 
+    // 5000 -- SearchFacts
+    //
 
-    public boolean validateMap(List<PreferencePredicates> hotelFacts, Map<String, PreferencePredicates> searchFacts) {
-        for (PreferencePredicates hotelFact : hotelFacts) {
-            if (searchFacts.containsKey(hotelFact.getId()) && searchFacts.get(hotelFact.getId()).equals(hotelFact))
-                return true;
-        }
-        return false;
+    public boolean validateMap(HotelMapFact rule, List<HotelFact> searchFacts, Integer sortOrder) {
+        AtomicBoolean returnValue = new AtomicBoolean(false);
+        searchFacts.forEach(hotelFact -> {
+            if (rule.containsKey(hotelFact.getGlobalPropertyId())
+                    && rule.get(hotelFact.getGlobalPropertyId()).contains(hotelFact.getStayDates())) {
+                hotelFact.setSortOrder(sortOrder);
+                returnValue.set(true);
+            }
+        });
+        return returnValue.get();
     }
 }

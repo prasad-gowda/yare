@@ -65,7 +65,7 @@ public class CustomFunctionWithMapRuleTest implements AbstractRuleTest {
         RulesEngine engine = new RulesEngineBuilder()
                 .withRulesRepository(i -> rule)
                 .withActionMapping("collect", method(new Actions(), (action) -> action.collect(null, null)))
-                .withFunctionMapping("validateMap", method(new Actions(), (actions -> actions.validateMap(null, null))))
+                .withFunctionMapping("validateMap", method(new Actions(), (actions -> actions.validateMap(null, null,null))))
                 .build();
 
         session = engine.createSession("hotels");

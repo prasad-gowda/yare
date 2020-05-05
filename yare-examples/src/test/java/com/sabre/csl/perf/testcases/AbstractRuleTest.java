@@ -26,6 +26,7 @@ package com.sabre.csl.perf.testcases;
 
 import com.sabre.csl.perf.model.HotelFact;
 import com.sabre.csl.perf.model.PreferencePredicates;
+import com.sabre.csl.perf.model.StayDates;
 import com.sabre.oss.yare.core.model.Rule;
 import com.sabre.oss.yare.serializer.json.RuleToJsonConverter;
 
@@ -46,9 +47,9 @@ import static java.nio.file.Files.write;
 public interface AbstractRuleTest {
     String ruleFileLocation = "C:\\Users\\SG0308137\\Downloads\\rule.json";
 
-    int totalProperty = 150000;
+    int totalProperty = 10;
 
-    int numberOfRules = 10;
+    int numberOfRules = 1;
 
     BiFunction<Integer, Integer, Boolean> validate =
             (Integer propertyId, Integer sortOrder) -> String.valueOf(propertyId).endsWith(String.valueOf(sortOrder));
@@ -56,7 +57,7 @@ public interface AbstractRuleTest {
     default List<Rule> getRules(int numberOfRules) {
         List<Rule> rules = new ArrayList<>();
         if (numberOfRules > 10) numberOfRules = 10;
-        for (int i = 1; i <= numberOfRules; i++) {
+        for (int i = 0; i <= numberOfRules; i++) {
             rules.add(getRule(i));
         }
         return rules;
@@ -82,11 +83,16 @@ public interface AbstractRuleTest {
         List<HotelFact> facts = new ArrayList<>();
         for (int count = 0; count <= 5000 && count <= totalProperty; count++) {
             PreferencePredicates preferencePredicates = new PreferencePredicates();
+            StayDates stayDates = new StayDates();
             preferencePredicates.setId(String.valueOf(100000 + count));
             preferencePredicates.setStartDate(getDates(100000 + count));
             preferencePredicates.setEndDate(getDates(100000 + count + 7));
+            stayDates.setStayStartDate(getDates(100000 + count));
+            stayDates.setStayEndDate(getDates(100000 + count + 7));
             HotelFact hotelFact = new HotelFact();
             hotelFact.setPropertyContracts(Collections.singletonList(preferencePredicates));
+            hotelFact.setStayDates(stayDates);
+            hotelFact.setGlobalPropertyId(100000 + count);
             facts.add(hotelFact);
         }
         return facts;
@@ -94,11 +100,7 @@ public interface AbstractRuleTest {
 
     default void writeRuleJsonToFile(List<Rule> rules) {
         RuleToJsonConverter ruleToJsonConverter = new RuleToJsonConverter();
-        try {
-            Files.delete(Paths.get(ruleFileLocation));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+
         //Build Rule JSON array in string format
         rules.forEach(rule -> {
             try {

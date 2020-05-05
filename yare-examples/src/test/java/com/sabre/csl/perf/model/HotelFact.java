@@ -40,11 +40,30 @@ public class HotelFact {
     private Boolean isSupplierPreferenceApplied;
     private String tierLabelType;
     private Integer chainSortOrder;
+    private boolean selected = false;
 
     private List<PreferencePredicates> chainContracts;
     private List<PreferencePredicates> propertyContracts;
 
+    private StayDates stayDates;
+
     public HotelFact() {
+    }
+
+    public StayDates getStayDates() {
+        return stayDates;
+    }
+
+    public void setStayDates(StayDates stayDates) {
+        this.stayDates = stayDates;
+    }
+
+    public boolean isSelected() {
+        return selected;
+    }
+
+    public void setSelected(boolean selected) {
+        this.selected = selected;
     }
 
     public HotelFact(Integer globalPropertyId) {

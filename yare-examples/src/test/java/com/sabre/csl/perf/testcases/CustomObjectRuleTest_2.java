@@ -28,7 +28,6 @@ import com.google.common.collect.Lists;
 import com.sabre.csl.perf.Action.Actions;
 import com.sabre.csl.perf.model.HotelFact;
 import com.sabre.csl.perf.model.PreferencePredicates;
-import com.sabre.csl.perf.model.Wrapper;
 import com.sabre.oss.yare.core.RuleSession;
 import com.sabre.oss.yare.core.RulesEngine;
 import com.sabre.oss.yare.core.RulesEngineBuilder;
@@ -39,8 +38,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -91,9 +89,6 @@ public class CustomObjectRuleTest_2 implements AbstractRuleTest {
     }
 
     public void checkProperty(List<HotelFact> facts) {
-        Wrapper wrapper = new Wrapper();
-        wrapper.setHotelFacts(facts);
-
         Instant start = Instant.now();
         ArrayList<HotelFact> result = session.execute(new ArrayList<HotelFact>(), facts);
         Instant endTime = Instant.now();
@@ -106,19 +101,16 @@ public class CustomObjectRuleTest_2 implements AbstractRuleTest {
         return RuleDsl.ruleBuilder()
                 .name("Rule for sort order " + i)
                 .attribute("active", true)
-                .fact("wrapper", Wrapper.class)
+                .fact("hotelFact", HotelFact.class)
                 .predicate(
-                        and(
-                                contains(
-                                        RuleDsl.values(PreferencePredicates.class, getPreferencePredicates(i)),
-                                        value("${wrapper.hotelFacts.propertyContracts[*]}")))
-                )
+                        contains(
+                                RuleDsl.values(PreferencePredicates.class, getPreferencePredicates(i)),
+                                value("${hotelFact.propertyContracts[*]}")))
                 .action("collect",
                         param("context", value("${ctx}")),
-                        param("fact", value("${wrapper.hotelFacts}")))
+                        param("fact", value("${hotelFact}")))
                 .build();
     }
-
 }
 
 
