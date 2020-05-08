@@ -28,7 +28,9 @@ import com.sabre.csl.perf.model.HotelFact;
 import com.sabre.csl.perf.model.HotelMapFact;
 import com.sabre.csl.perf.model.PreferencePredicates;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -39,6 +41,7 @@ public class Actions {
     }
 
     public void collectList(Set<HotelFact> context, List<HotelFact> fact) {
+        //System.out.println("Collect list start -> "+ Instant.now());
         fact.stream().filter(hotelFact -> hotelFact.getSortOrder() != null).forEach(context::add);
     }
 
@@ -54,8 +57,9 @@ public class Actions {
     //
 
     public boolean validateMap(HotelMapFact rule, List<HotelFact> searchFacts, Integer sortOrder) {
+        //System.out.println("Validate Map start -> " + Instant.now());
         AtomicBoolean returnValue = new AtomicBoolean(false);
-        searchFacts.forEach(hotelFact -> {
+        searchFacts.stream().filter(hotelFact -> Objects.isNull(hotelFact.getSortOrder())).forEach(hotelFact -> {
             if (rule.containsKey(hotelFact.getGlobalPropertyId())
                     && rule.get(hotelFact.getGlobalPropertyId()).contains(hotelFact.getStayDates())) {
                 hotelFact.setSortOrder(sortOrder);

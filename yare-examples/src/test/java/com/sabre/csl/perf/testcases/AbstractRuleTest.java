@@ -82,14 +82,17 @@ public interface AbstractRuleTest {
 
     default List<HotelFact> getHotelFacts() {
         List<HotelFact> facts = new ArrayList<>();
-        for (int count = 0; count <= 5000 && count <= totalProperty; count++) {
+        for (int count = 0; count < 5000 && count <= totalProperty; count++) {
             PreferencePredicates preferencePredicates = new PreferencePredicates();
-            StayDates stayDates = new StayDates();
+
             preferencePredicates.setId(String.valueOf(100000 + count));
             preferencePredicates.setStartDate(getDates(100000 + count));
-            preferencePredicates.setEndDate(getDates(100000 + count + 7));
+            preferencePredicates.   setEndDate(getDates(100000 + count + 7));
+
+            StayDates stayDates = new StayDates();
             stayDates.setStayStartDate(getDates(100000 + count));
             stayDates.setStayEndDate(getDates(100000 + count + 7));
+
             HotelFact hotelFact = new HotelFact();
             hotelFact.setPropertyContracts(Collections.singletonList(preferencePredicates));
             hotelFact.setStayDates(stayDates);

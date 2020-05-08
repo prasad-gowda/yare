@@ -30,27 +30,34 @@ import com.sabre.csl.perf.model.HotelFact;
 import com.sabre.csl.perf.model.HotelMapFact;
 import com.sabre.csl.perf.model.StayDates;
 import com.sabre.csl.perf.model.Wrapper;
+import com.sabre.csl.perf.rule.CustomRuleRepository;
 import com.sabre.oss.yare.core.RuleSession;
 import com.sabre.oss.yare.core.RulesEngine;
 import com.sabre.oss.yare.core.RulesEngineBuilder;
 import com.sabre.oss.yare.core.model.Rule;
+import com.sabre.oss.yare.dsl.RuleDsl;
 import com.sabre.oss.yare.serializer.json.RuleToJsonConverter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
+import static com.sabre.oss.yare.dsl.RuleDsl.*;
 import static com.sabre.oss.yare.invoker.java.MethodCallMetadata.method;
 
+/**
+ * Program
+ * 150000
+ * Rule 10 ---> 15000  // Date Range
+ * <p>
+ * Search
+ * 5000 ->
+ */
 public class MapBasedSolution implements AbstractRuleTest {
 
 
@@ -70,7 +77,7 @@ public class MapBasedSolution implements AbstractRuleTest {
             writeRuleJsonToFile(rule);
 
         RulesEngine engine = new RulesEngineBuilder()
-                .withRulesRepository(i -> rule)
+                .withRulesRepository(new CustomRuleRepository())
                 .withActionMapping("collectList", method(new Actions(), (action) -> action.collectList(null, null)))
                 .withFunctionMapping("validateMap", method(new Actions(), (actions -> actions.validateMap(null, null, null))))
                 .build();
@@ -86,7 +93,7 @@ public class MapBasedSolution implements AbstractRuleTest {
         List<List<HotelFact>> partitions = Lists.partition(facts, 1000);
         ExecutorService executorService = Executors.newFixedThreadPool(partitions.size());
         for (List<HotelFact> hotelFacts : partitions)
-            executorService.execute(() -> checkProperty(hotelFacts,averageTime));
+            executorService.execute(() -> checkProperty(hotelFacts, averageTime));
         executorService.shutdown();
         executorService.awaitTermination(120, TimeUnit.SECONDS);
         Instant end = Instant.now();
@@ -95,12 +102,26 @@ public class MapBasedSolution implements AbstractRuleTest {
 
     @Test
     public void sequentialRuleExecution() throws InterruptedException {
-        List<HotelFact> facts = getHotelFacts();
         List<Long> averageTime = new ArrayList<>();
-        for (int i = 0; i < 10; i++)
-            checkProperty(facts, averageTime);
-        LongSummaryStatistics longSummaryStatistics = averageTime.stream().mapToLong(Long::longValue).summaryStatistics();
+        ExecutorService executorService = Executors.newFixedThreadPool(10);
+        Instant start = Instant.now();
+        for (int i = 0; i < 100; i++) {
+            executorService.execute(() -> checkProperty(getHotelFacts(), averageTime));
+        }
+
+        executorService.shutdown();
+        executorService.awaitTermination(300, TimeUnit.SECONDS);
+        Instant end = Instant.now();
+
+        LongSummaryStatistics longSummaryStatistics = new LongSummaryStatistics();
+        for (Long aLong : averageTime) {
+            long longValue = aLong;
+            longSummaryStatistics.accept(longValue);
+        }
+        System.out.println("Total Time taken by Threads ->" + Duration.between(start, end).toMillis() + " ms");
         System.out.println("Average time taken -> " + longSummaryStatistics.getAverage());
+        System.out.println("Max time taken -> " + longSummaryStatistics.getMax());
+        System.out.println("Min time taken -> " + longSummaryStatistics.getMin());
     }
 
     private void checkProperty(List<HotelFact> facts, List<Long> averageTime) {
@@ -108,16 +129,17 @@ public class MapBasedSolution implements AbstractRuleTest {
         wrapper.setHotelFacts(facts);
 
         Instant start = Instant.now();
+        System.out.println("Execution start -> " + Instant.now());
         Set<HotelFact> result = session.execute(new HashSet<>(), Collections.singleton(wrapper));
         Instant endTime = Instant.now();
 
         averageTime.add(Duration.between(start, endTime).toMillis());
-        Set<Integer> propertyId = facts.stream().map(HotelFact::getGlobalPropertyId).collect(Collectors.toSet());
-        long count = result.stream().map(HotelFact::getGlobalPropertyId).filter(id -> !propertyId.contains(id)).count();
-
+        long count = result.stream().filter(hotelFact -> hotelFact.getSortOrder() != null).count();
+        System.out.println("******************************************************************");
         System.out.println("Missing property count in result -> " + count);
         System.out.println("Time taken to execute -> " + Duration.between(start, endTime).toMillis() + "ms");
         System.out.println("Total found property ->" + result.size());
+        System.out.println("******************************************************************");
     }
 
     private Map<Integer, List<StayDates>> getHotelMapFact(int sortOrder) {
@@ -137,36 +159,37 @@ public class MapBasedSolution implements AbstractRuleTest {
     //  5000 -> Rule 1   // Property Matching
     // 5000 -> Rule 2
 
-    // 1 -> Rule 1  -> Action --> SetOrder 1
+    // m * n
+    // 1 -> Rule 1 // 3000 properties -> Action --> SetOrder 1
     // 1 -> Rule 2
     // 1 -> Rule 10
     // 2 -> Rule 1
     @Override
     public Rule getRule(int i) {
 
-        String filePath = String.format(ruleFileLocation, i);
+        /*String filePath = String.format(ruleFileLocation, i);
         try {
             String s = new String(Files.readAllBytes(Paths.get(filePath)));
             return converter.unmarshal(s);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return null;
-        /*return RuleDsl.ruleBuilder()
+        return null;*/
+        return RuleDsl.ruleBuilder()
                 .name("Rule for sort order " + i)
                 .attribute("active", true)
                 .fact("wrapper", Wrapper.class)
                 .predicate(
                         isTrue(function("validateMap", Boolean.class,
-                                param("hotelFactsMap", value(getHotelMapFact(i))), // JSON
-                                param("searchFact", value("${wrapper.hotelFacts}")), //DYNAMIC
-                                param("sortOrder", value(i)))  //JSON
+                                param("hotelFactsMap", RuleDsl.value(getHotelMapFact(i))), // JSON
+                                param("searchFact", RuleDsl.value("${wrapper.hotelFacts}")), //DYNAMIC
+                                param("sortOrder", RuleDsl.value(i)))  //JSON
                         )
                 )
                 .action("collectList",
-                        param("context", value("${ctx}")),
-                        param("fact", value("${wrapper.hotelFacts}")))
-                .build();*/
+                        param("context", RuleDsl.value("${ctx}")),
+                        param("fact", RuleDsl.value("${wrapper.hotelFacts}")))
+                .build();
     }
 }
 
